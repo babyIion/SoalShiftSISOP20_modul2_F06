@@ -1,14 +1,9 @@
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <string.h>
 #include <wait.h>
-#include <fnmatch.h>
 #include <dirent.h>
 
 int main(){
@@ -21,7 +16,7 @@ int main(){
         exit(EXIT_FAILURE); // Jika gagal membuat proses baru, program akan berhenti
     }
     if (child_id == 0) {
-    // this is child
+        // this is child
         char *argv[] = {"mkdir", "-p", "/home/tari/modul2/indomie", NULL};
         execv("/bin/mkdir", argv);
     }
@@ -84,66 +79,42 @@ int main(){
                 else {
                     // this is parent
                     while ((wait(&status)) > 0);
-                    pid_t child_id5;
+                    DIR *d;
+                    struct dirent *dir;
+                    d = opendir("/home/tari/modul2/jpg/");
+                    if(d){
+                        char namafile[300];
+                        while ((dir = readdir(d)) != NULL)
+                        {
+                            if(dir->d_type == DT_DIR){
+                                if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
+                                else{
+                                    child_id = fork();
 
-                    child_id5 = fork();
-                    if (child_id5 < 0) {
-                        exit(EXIT_FAILURE); // Jika gagal membuat proses baru, program akan berhenti
-                    }
-                    if (child_id5 == 0) {
-                        DIR *d;
-                        struct dirent *dir;
-                        d = opendir("/home/tari/modul2/jpg/");
-                        if(d){
-                            char namafile[300];
-                            while ((dir = readdir(d)) != NULL)
-                            {
-                                if(dir->d_type == DT_DIR){
-                                    if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
-                                    else{
-                                        child_id = fork();
-
-                                        if (child_id < 0){
-                                            exit(EXIT_FAILURE);
-                                        }
-                                        if (child_id == 0){
-                                            snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
-                                            char *argv[] = {"mv", namafile, "/home/tari/modul2/indomie", NULL};
-                                            execv("/bin/mv", argv);
-                                        }
-                                        else {
-                                            while ((wait(&status)) > 0);
+                                    if (child_id < 0){
+                                        exit(EXIT_FAILURE);
+                                    }
+                                    if (child_id == 0){
+                                        snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
+                                        char *argv[] = {"mv", namafile, "/home/tari/modul2/indomie", NULL};
+                                        execv("/bin/mv", argv);
+                                    }
+                                    else {
+                                        while ((wait(&status)) > 0);
+                                        char folder[350];
+                                        for (i = 1; i < 3; i++)
+                                        {
+                                            snprintf(folder, 350, "/home/tari/modul2/indomie/%s/coba%d.txt", dir->d_name, i);
+                                            FILE *fp;
+                                            fp = fopen(folder, "w");
+                                            fclose(fp);
+                                            sleep(3);
                                         }
                                     }
                                 }
                             }
-                        }       
-                    }
-                    else {
-                        // this is parent
-                        while ((wait(&status)) > 0);
-                        DIR *d;
-                        struct dirent *dir;
-                        d = opendir("/home/tari/modul2/indomie/");
-
-                        char folder[350];
-
-                        while ((dir = readdir(d)) != NULL){
-                            if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
-                            else{
-                                int i;
-                                for (i = 1; i < 3; i++)
-                                {
-                                    snprintf(folder, 350, "/home/tari/modul2/indomie/%s/coba%d.txt", dir->d_name, i);
-                                    FILE *fp;
-                                    fp = fopen(folder, "w");
-                                    fclose(fp);
-                                    
-                                }
-                            }    
                         }
-                        closedir(d);
-                    }
+                    }       
                 }
             }
         }
