@@ -72,21 +72,8 @@ int main(){
                                 else {
                                     while ((wait(&status)) > 0);			
                                 }
-                            }   
-                        }
-                    }
-                }
-                else {
-                    // this is parent
-                    while ((wait(&status)) > 0);
-                    DIR *d;
-                    struct dirent *dir;
-                    d = opendir("/home/tari/modul2/jpg/");
-                    if(d){
-                        char namafile[300];
-                        while ((dir = readdir(d)) != NULL)
-                        {
-                            if(dir->d_type == DT_DIR){
+                            }
+                            else{
                                 if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
                                 else{
                                     child_id = fork();
@@ -112,9 +99,9 @@ int main(){
                                         }
                                     }
                                 }
-                            }
+                            }   
                         }
-                    }       
+                    }
                 }
             }
         }
