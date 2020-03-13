@@ -1,22 +1,151 @@
 # SoalShiftSISOP20_modul2_F06
-## Contents
 
 ## Soal 1
 Buatlah program C yang menyerupai crontab untuk menjalankan script bash dengan
 ketentuan sebagai berikut:
-a. Program menerima 4 argumen berupa:
-i. Detik: 0-59 atau * (any value)
-ii. Menit: 0-59 atau * (any value)
-iii. Jam: 0-23 atau * (any value)
-iv. Path file .sh
+
+a. Program menerima 4 argumen berupa: Detik: 0-59 atau * (any value), Menit: 0-59 atau * (any value), Jam: 0-23 atau * (any value), Path file .sh
+
 b. Program akan mengeluarkan pesan error jika argumen yang diberikan tidak
 sesuai
-c. Program hanya menerima 1 config cron
+
+c. Programhanya menerima 1 config cron
+
 d. Program berjalan di background (daemon)
+
 e. Tidak boleh menggunakan fungsi system()
+
 Contoh: ./program \* 34 7 /home/somi/test.sh
 Program dengan argumen seperti contoh di atas akan menjalankan script test.sh setiap
 detik pada jam 07:34.
+
+#### Penyelesaian
+~~~
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <syslog.h>
+#include <string.h>
+#include <time.h>
+
+int main(int argc, char *argv[]) {
+  pid_t pid, sid;   // Variabel untuk menyimpan PID
+ 
+  time_t now = time(NULL);
+  struct tm ts = *localtime(&now);
+
+  int secT, minT, hourT;
+  char path[200];
+
+  if (argc < 5 || argc > 5) {
+    printf("Jumlah argumen lebih atau kurang dari 4.\n");
+    return 0;
+  }
+
+  if (strcmp(argv[1], "*") == 0)
+    secT = ts.tm_sec;
+  else {
+    secT = atoi(argv[1]);
+    if (secT < 0 || secT > 59) {
+      printf("Format detik salah\n");
+      return 0;
+    }
+  }
+
+  if (strcmp(argv[2], "*") == 0)
+    minT = ts.tm_min;
+  else {
+    minT = atoi(argv[2]);
+    if (minT < 0 || minT > 59) {
+      printf("Format menit salah.\n");
+      return 0;
+    }
+  }
+
+  if (strcmp(argv[3], "*") == 0)
+    hourT = ts.tm_hour;
+  else {
+    hourT = atoi(argv[3]);
+    if (hourT < 0 || hourT > 23) {
+      printf("Format jam salah.\n");
+      return 0;
+    }
+  }
+
+  strcpy(path, argv[4]);
+  int pathLen = strlen(path);
+  if (path[pathLen - 3] != '.' && path[pathLen - 2] != 's' && path[pathLen - 1] != 'h') {
+    printf("Bukan file bash script.\n");
+    return 0;
+  }
+
+//  printf("%d %d %d --- %d %d %d", secT, minT, hourT, ts.tm_sec, ts.tm_min, ts.tm_hour);
+
+  pid = fork();     // Menyimpan PID dari Child Process
+
+  /* Keluar saat fork gagal
+  * (nilai variabel pid < 0) */
+  if (pid < 0) {
+    exit(EXIT_FAILURE);
+  }
+
+  /* Keluar saat fork berhasil
+  * (nilai variabel pid adalah PID dari child process) */
+  if (pid > 0) {
+    exit(EXIT_SUCCESS);
+  }
+
+  umask(0);
+
+  sid = setsid();
+  if (sid < 0) {
+    exit(EXIT_FAILURE);
+  }
+
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+  while (1) {
+
+    now = time(NULL);
+    ts = *localtime(&now);
+
+    if (strcmp(argv[1], "*") == 0)
+      secT = ts.tm_sec;
+    if (strcmp(argv[2], "*") == 0)
+      minT = ts.tm_min;
+    if (strcmp(argv[3], "*") == 0)
+      hourT = ts.tm_hour;
+
+    if (secT == ts.tm_sec && minT == ts.tm_min && hourT == ts.tm_hour) {
+      pid_t child = fork();
+      if (child == 0) {
+        char *argm[] = {"bash", path, NULL};
+        execv("/bin/bash", argm);
+      }
+    }
+    
+    sleep(1);
+  }
+}
+~~~
+Penjelasan:
+- `time_t now = time(NULL);``struct tm ts = *localtime(&now);` untuk mendapatkan timestamp waktu sekarang dengan library time.h
+- Pertama program akan mengecek apakah argumen-argumen yang diberikan telah sesuai.
+- `pid = fork();` merupakan perintah untuk membuat child process.
+- Program selanjutnya membuat daemon dari child process yang telah dibuat sebelumnya.
+- Dalam loop program daemon, program akan terus menerus mengambil timestamp terbaru.
+- Variable secT, minT, hourT akan disamakan dengan timestamp sekarang apabila ketika menjalankan program argumen detik, menit atau jam adalah "*" (any value)
+- Apabila bukan "*" (any value), variable tersebut akan terus berisi angka yang diinputkan melalui argumen.
+- Apabila terjadi kecocokan seluruh secT, minT, hourT dengan timestamp sekarang, file bash script akan dijalankan dengan perintah execv melalui child process yang sebelumnya dibuat khusus untuk menjalankan execv tersebut.
+- Di akhir loop, diberi sleep selama 1 detik agar menghindari kesalahan pengaturan penjalanan bash script.
+
+
 
 ### a. Tentukan wilayah bagian (region) mana yang memiliki keuntungan (profit) paling sedikit
 
