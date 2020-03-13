@@ -20,7 +20,7 @@ Program dengan argumen seperti contoh di atas akan menjalankan script test.sh se
 detik pada jam 07:34.
 
 #### Penyelesaian
-~~~
+~~~c
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -152,7 +152,7 @@ sebuah program.
 
 #### Penyelesaian
 Loop Daemon
-~~~
+~~~c
 ...
 while (1) {
 	time_t now = time(NULL);
@@ -248,7 +248,7 @@ Penjelasan :
 - Percabangan process berhenti di sini, program akan kembali ke cabang paling awal di mana akan berlanjut ke `sleep(30);`
 
 Membuat Program Killer
-~~~
+~~~c
 int main(int argc, char *argv[]) {
   pid_t pid, sid;   // Variabel untuk menyimpan PID
 
@@ -308,3 +308,53 @@ Penjelasan :
 - `int main(int argc, char *argv[])` menggunakan argumen pada int main sehingga dapat menerima opsi ketika program dijalankan apakah -a atau -b
 - Program akan membuat killerprogram yang sesuai dengan mode dijalankannya.
 - killerA akan melakukan killall sehingga segala process berhenti saat itu juga, sedangkan killerB akan melakukan kill process parent yang merupakan loop utama daemon yang melakukan spawning child process terus menerus. Child process yang sedang berjalan akan terus berjalan hingga selesai pada mode b.
+
+## Soal 3
+### a
+
+Program buatan jaya harus bisa membuat dua direktori di
+“/home/[USER]/modul2/”. Direktori yang pertama diberi nama “indomie”, lalu
+lima detik kemudian membuat direktori yang kedua bernama “sedaap”.
+
+Penyelesaian:
+~~~c
+pid_t child_id, child_id1, child_id2, child_id3;
+int status;
+
+child_id = fork();
+    if (child_id < 0) {
+        exit(EXIT_FAILURE); // Jika gagal membuat proses baru, program akan berhenti
+    }
+    if (child_id == 0) {
+        // this is child
+        char *argv[] = {"mkdir", "-p", "/home/tari/modul2/indomie", NULL};
+        execv("/bin/mkdir", argv);
+    }
+    else {
+        // this is parent
+        while ((wait(&status)) > 0);
+        sleep(5);
+...
+~~~
+
+Penjelasan:
+~~~c
+pid_t child_id, child_id1, child_id2, child_id3;
+int status;
+~~~
+Mendeklarasi variabel yang akan dipakai.
+~~~c
+child_id = fork();
+~~~
+fork() untuk membuat child process.
+~~~c
+if (child_id == 0) {
+      // this is child
+      char *argv[] = {"mkdir", "-p", "/home/tari/modul2/indomie", NULL};
+      execv("/bin/mkdir", argv);
+}else {
+      // this is parent
+      while ((wait(&status)) > 0);
+      sleep(5);
+~~~
+Arti dari `child_id == 0` merupakan child process, di mana dilakukan proses membuat folder indomie. Dalam block else, `while ((wait(&status)) > 0);` untuk menunggu child process selesai, `sleep(5)` artinya menunggu selama 5 detik untuk melakukan proses selanjutnya.
