@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  printf("%d %d %d --- %d %d %d", secT, minT, hourT, ts.tm_sec, ts.tm_min, ts.tm_hour);
+//  printf("%d %d %d --- %d %d %d", secT, minT, hourT, ts.tm_sec, ts.tm_min, ts.tm_hour);
 
   pid = fork();     // Menyimpan PID dari Child Process
 
