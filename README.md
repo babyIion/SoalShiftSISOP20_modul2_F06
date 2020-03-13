@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 }
 ~~~
 Penjelasan:
-- `time_t now = time(NULL);``struct tm ts = *localtime(&now);` untuk mendapatkan timestamp waktu sekarang dengan library time.h
+- `time_t now = time(NULL); struct tm ts = *localtime(&now);` untuk mendapatkan timestamp waktu sekarang dengan library time.h
 - Pertama program akan mengecek apakah argumen-argumen yang diberikan telah sesuai.
 - `pid = fork();` merupakan perintah untuk membuat child process.
 - Program selanjutnya membuat daemon dari child process yang telah dibuat sebelumnya.
@@ -145,77 +145,166 @@ Penjelasan:
 - Apabila terjadi kecocokan seluruh secT, minT, hourT dengan timestamp sekarang, file bash script akan dijalankan dengan perintah execv melalui child process yang sebelumnya dibuat khusus untuk menjalankan execv tersebut.
 - Di akhir loop, diberi sleep selama 1 detik agar menghindari kesalahan pengaturan penjalanan bash script.
 
-
-
-### a. Tentukan wilayah bagian (region) mana yang memiliki keuntungan (profit) paling sedikit
-
-#### Penyelesaian
-Menggunakan awk. Berikut merupakan kode awk-nya.
-~~~
-awk 'BEGIN {FS="\t"; PROCINFO["sorted_in"]="@val_num_asc"}
-FNR>1 {reg[$13]+=$21}
-END {for(i in reg) print i, reg[i]}' Sample-Superstore.tsv |
-awk '{print $1}' | head -1
-~~~
-Penjelasan:
-- Dalam block **BEGIN** 
-	- `FS=\"t"` artinya data yang diinput menggunakan "tab" sebagai pembatas kolom.
-	- `PROCINFO["sorted_in"]="@val_num_asc"` merupakan fitur yang digunakan untuk meng-scan array menurut value-nya yang berupa numeric secara ascending (kecil ke besar)
-- Dalam block **body**
-	- `FNR>1` artinya mengabaikan row pertama (yang dalam data ini merupakan title atau atribut)
-	- `{reg[$13]+=$21}` mengisi array reg dengan jumlah "profit" (kolom 21) di mana index array reg adalah data pada kolom 13
-- Dalam block **END**
-	- `{for(i in reg) print i, reg[i]}` iterasi array reg dengan i sebagai indexnya, lalu mencetak semua index dan isi dari array
-- `Sample-Superstore.tsv` nama file yang menjadi input
-- `awk '{print $1}'` mencetak kolom pertama dari hasil awk yang sebelumnya
-- `head -1` membatasi hanya row pertama saja yang ditampilkan
-
-### b. Tampilkan 2 negara bagian (state) yang memiliki keuntungan (profit) paling sedikit berdasarkan hasil poin a
+## Soal 2
+Shisoppu mantappu! itulah yang selalu dikatakan Kiwa setiap hari karena sekarang dia
+merasa sudah jago materi sisop. Karena merasa jago, suatu hari Kiwa iseng membuat
+sebuah program.
 
 #### Penyelesaian
-Menggunakan awk, dan memanfaatkan hasil dari a. Berikut merupakan kode awk-nya.
+Loop Daemon
 ~~~
-awk -v min_region="$min_region" 'BEGIN {FS="\t"; PROCINFO["sorted_in"]="@val_num_asc"}
-($13~min_region) {state[$11]+=$21}
-END{for(i in state) print i, state[i]}' Sample-Superstore.tsv |
-awk '{print $1}' | head -2
+...
+while (1) {
+	time_t now = time(NULL);
+	struct tm ts = *localtime(&now);
+	char folder[200];
+	strftime(folder, 200, "%Y-%m-%d_%H:%M:%S", &ts);
+
+	pid_t child1 = fork();
+	if (child1 == 0) {
+		int status2;
+		pid_t child2 = fork();
+
+		if (child2 == 0) {
+			char *argm[] = {"mkdir", folder, NULL};
+			execv("/bin/mkdir", argm);
+		}
+		else {
+			while ((wait(&status2)) > 0);
+			int i;
+			char photo[200];
+			strcpy(photo, "https://picsum.photos/");
+			for (i=0; i<20; i++) {
+				time_t now = time(NULL);
+				struct tm ts = *localtime(&now);
+				char timenow[200];
+				strftime(timenow, 200, "%Y-%m-%d_%H:%M:%S", &ts);
+				char photoname[200];
+				snprintf(photoname, 200, "%s/%s", folder, timenow);
+				char photolink[200];
+				snprintf(photolink, 200, "%s%ld", photo, (time(NULL)%1000 + 100));
+
+				pid_t childtmp = fork();
+				if (childtmp == 0) {
+					char *argm3[] = {"wget", photolink, "-O", photoname, "-q", "-o", "/dev/null", NULL};
+					execv("/usr/bin/wget", argm3);
+				}
+				sleep(5);
+			}
+
+			int status3;
+			pid_t child3 = fork();
+
+			if (child3 == 0) {
+				char zipname[200];
+				snprintf(zipname, 200, "%s.zip", folder);
+				char *argm4[] = {"zip", "-r", zipname, folder, NULL};
+				execv("/usr/bin/zip", argm4);
+			}
+			else {
+				while ((wait(&status3)) > 0);
+				char *argm5[] = {"rm", "-r", folder, NULL};
+				execv("/bin/rm", argm5);
+			}
+		}
+	}
+	sleep(30);
+  }
+}
 ~~~
+a. Pertama-tama, Kiwa membuat sebuah folder khusus, di dalamnya dia membuat
+sebuah program C yang per 30 detik membuat sebuah folder dengan nama
+timestamp [YYYY-mm-dd_HH:ii:ss].
+
 Penjelasan:
-- `-v min_region="$min_region"` -v merupakan command untuk mendeklarasikan variable min_region di mana valuenya adalah hasil dari perintah sebelumnya
-- Dalam block **BEGIN** sama seperti sebelumnya
-- Dalam block **body**
-	- `($13~min_region)` mencari pattern pada kolom 13 yang memiliki data sama dengan min_region 
-	- `{state[$11]+=$21}` mengisi array state dengan jumlah "profit" (kolom 21) di mana index array state adalah data pada kolom 11
-- Dalam block **END**
-	- `for(i in state) print i, state[i]` iterasi array state dengan i sebagai indexnya, lalu mencetak semua index dan isi dari array
-- `head -2` hanya menampilkan dua row teratas
+- Pada loop daemon, pertama kali program akan mendapatkan timestamp terbaru lalu melakukan `fork()` untuk membuat child process
+- Pada child process yang pertama, akan dibuat child process lagi unutuk melakukan pembuatan folder dengan nama sesuai yang ditentukan. (format : %Y-%m-%d_%H:%M:%S)
+- Pembuatan folder menggunakan perintah execv yang akan menjalankan mkdir
+- Loop awal akan di `sleep(30);` agar process terulang setiap 30 detik
 
-### c. Tampilkan 10 produk (product name) yang memiliki keuntungan (profit) paling sedikit berdasarkan 2 negara bagian (state) hasil poin b
+b. Tiap-tiap folder lalu diisi dengan 20 gambar yang di download dari
+https://picsum.photos/, dimana tiap gambar di download setiap 5 detik. Tiap
+gambar berbentuk persegi dengan ukuran (t%1000)+100 piksel dimana t adalah
+detik Epoch Unix. Gambar tersebut diberi nama dengan format timestamp [YYYYmm-
+dd_HH:ii:ss].
 
-#### Penyelesaian
-Menggunakan awk, dan memanfaatkan hasil dari b. Berikut merupakan kode awk-nya.
-~~~
-state1="Texas"
-state2="Illinois"
-awk -v state1="$state1" -v state2="$state2" 'BEGIN {FS="\t"; OFS="\t";
- PROCINFO["sorted_in"]="@val_num_asc"}
-($11~state1 || $11~state2) {produk[$17]+=$21}
-END{for(i in produk)print i,produk[i]}' Sample-Superstore.tsv |
-awk 'BEGIN{FS="\t"}; {print $1}' | head -10
-~~~
 Penjelasan:
-- `state1="Texas" state2="Illinois"` mendeklarasikan variable state1 dengan value "Texas" (didapat dari hasil b) dan state2 dengan value 
-"Illinois" (yang juga didapat dari hasil b)
-- Dalam block **BEGIN**
-	- kurang lebih sama dengan yang sebelumnya, yang berbeda terdapat `OFS="\t"` yang berarti batas antar kolom pada output adalah tab
-- Dalam block **body**
-	- `($11~state1 || $11~state2)` mencari pattern pada kolom 11 yang memiliki data sama dengan state1 (Texas) atau state2 (Illinois)
-	- `{produk[$17]+=$21}` mengisi array produk dengan jumlah "profit" (kolom 21) di mana index array produk adalah data pada kolom 17
-- Dalam block **END**
-	- `for(i in produk) print i, produk[i]` iterasi array produk dengan i sebagai indexnya, lalu mencetak semua index dan isi dari array
-- `Sample-Superstore.tsv | awk 'BEGIN{FS="\t"}; {print $1}' | head -10`
-	- `awk 'BEGIN{FS="\t"}` artinya data yang diinput (dalam hal ini merupakan output dari perintah sebelumnya) menggunakan "tab" sebagai pembatas kolom.
-	- `head -10` menampilkan 10 row teratas
+- Parent dari process pembuatan folder diatas akan menunggu process pembuatan folder selesai dengan `while ((wait(&status2)) > 0);`
+- Kemudian akan menyiapkan link untuk mendownload gambar `strcpy(photo, "https://picsum.photos/");` . Dimasukkan ke variable char photo.
+- Akan dijalankan loop sebanyak 20x untuk mendownload gambar.
+- Untuk mendapatkan detik Epoch Unix dapat menggunakan command `time(NULL)`. Detik ini akan digunakan untuk menentukan ukuran gambar yang didownload `snprintf(photolink, 200, "%s%ld", photo, (time(NULL)%1000 + 100));`
+- Setelah itu akan dibuat child yang khusus untuk mendownload gambar dengan perintah wget
+- `char *argm3[] = {"wget", photolink, "-O", photoname, "-q", "-o", "/dev/null", NULL};` wget menggunakan opsi -O untuk mengatur filename gambar yang didownload dan `-q -o /dev/null` agar wget tidak menghasilkan output(misal : logfile).
+- Setiap loop, program akan di sleep selama 5 detik.
 
-#### Hasil
-![output_soal1](https://github.com/neutralix/SoalShiftSISOP20_modul1_F06/blob/master/Soal1/output_soal1.png)
+c. Agar rapi, setelah sebuah folder telah terisi oleh 20 gambar, folder akan di zip dan
+folder akan di delete(sehingga hanya menyisakan .zip).
+
+Penjelasan :
+- Setelah loop selesai menjalankan pendownloadan gambar, akan dibuat child process lagi untuk melakukan process zip folder.
+- `char *argm4[] = {"zip", "-r", zipname, folder, NULL};` zip menggunakan opsi -r untuk menandakan akan men-zip sebuah folder dengan nama output zipname(berisi nama folder yang sudah berisi gambar + .zip) dan file yang akan di zip adalah folder(berisi nama folder yang sudah berisi gambar);
+- Parent akan menunggu child process selesai dengan `while ((wait(&status3)) > 0);` lalu setelah itu menghapus folder yang sebelumnya dilakukan zip
+- `char *argm5[] = {"rm", "-r", folder, NULL};` rm menggunakan opsi -r yang menandakan akan me-remove sebuah folder.
+- Percabangan process berhenti di sini, program akan kembali ke cabang paling awal di mana akan berlanjut ke `sleep(30);`
+
+Membuat Program Killer
+~~~
+int main(int argc, char *argv[]) {
+  pid_t pid, sid;   // Variabel untuk menyimpan PID
+
+  pid = fork();     // Menyimpan PID dari Child Process
+
+  pid_t thispid = getpid();
+  int killpid = (int)thispid;
+
+  if (argv[1][1] == 'a') {
+  	FILE *file;
+	file = fopen("killerA.sh", "w");
+	fprintf(file, "killall ./soal2\n");
+	fprintf(file, "rm $0\n");
+	fclose(file);
+	if (fork() == 0) {
+		char *argmA[] = {"chmod", "+x", "killerA.sh", NULL};
+		execv("/bin/chmod", argmA);
+	}
+  }
+  else if (argv[1][1] == 'b') {
+  	FILE *file;
+	file = fopen("killerB.sh", "w");
+	fprintf(file, "kill -9 %d\n", killpid);
+	fprintf(file, "rm $0\n");
+	fclose(file);
+	if (fork() == 0) {
+		char *argmB[] = {"chmod", "+x", "killerB.sh", NULL};
+		execv("/bin/chmod", argmB);
+	}
+  }
+...
+~~~
+
+d. Karena takut program tersebut lepas kendali, Kiwa ingin program tersebut mengenerate
+sebuah program "killer" yang siap di run(executable) untuk
+menterminasi semua operasi program tersebut. Setelah di run, program yang
+menterminasi ini lalu akan mendelete dirinya sendiri.
+
+Penjelasan :
+- File killer dapat dibuat menggunakan perintah pembuatan file dalam C.
+- Akan dibuat pointer to FILE yang akan digunakan untuk membuat file bash script.
+- Bash script tersebut diisi dengan perintah `killall ./soal2` atau `kill -9 (pid)` tergantung dari mode yang dijalankan (-a atau -b)
+- Program akan menghapus dirinya sendiri menggunakan `rm $0`
+- Akan dibuat child process yang khusus untuk mengubah permission file yang baru kita buat dengan perintah chmod
+- `char *argmB[] = {"chmod", "+x", "killer[A/B].sh", NULL};` chmod menggunakan opsi +x yang menandakan file kita akan ditambahkan akses executable sehingga dalam dijalankan.
+
+e. Kiwa menambahkan bahwa program utama bisa dirun dalam dua mode, yaitu
+MODE_A dan MODE_B. untuk mengaktifkan MODE_A, program harus dijalankan
+dengan argumen -a. Untuk MODE_B, program harus dijalankan dengan argumen
+-b. Ketika dijalankan dalam MODE_A, program utama akan langsung
+menghentikan semua operasinya ketika program killer dijalankan. Untuk
+MODE_B, ketika program killer dijalankan, program utama akan berhenti tapi
+membiarkan proses di setiap folder yang masih berjalan sampai selesai(semua
+folder terisi gambar, terzip lalu di delete).
+
+Penjelasan :
+- `int main(int argc, char *argv[])` menggunakan argumen pada int main sehingga dapat menerima opsi ketika program dijalankan apakah -a atau -b
+- Program akan membuat killerprogram yang sesuai dengan mode dijalankannya.
+- killerA akan melakukan killall sehingga segala process berhenti saat itu juga, sedangkan killerB akan melakukan kill process parent yang merupakan loop utama daemon yang melakukan spawning child process terus menerus. Child process yang sedang berjalan akan terus berjalan hingga selesai pada mode b.
