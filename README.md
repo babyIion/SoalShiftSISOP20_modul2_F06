@@ -330,10 +330,16 @@ child_id = fork();
         char *argv[] = {"mkdir", "-p", "/home/tari/modul2/indomie", NULL};
         execv("/bin/mkdir", argv);
     }
-    else {
-        // this is parent
-        while ((wait(&status)) > 0);
+    while ((wait(&status)) > 0);
         sleep(5);
+        child_id1 = fork();
+        if (child_id1 < 0){
+            exit(EXIT_FAILURE);
+        }
+        if (child_id1 == 0){
+            char *argv[] = {"mkdir", "-p", "/home/tari/modul2/sedaap", NULL};
+            execv("/bin/mkdir", argv);
+        }
 ...
 ~~~
 
@@ -357,4 +363,136 @@ if (child_id == 0) {
       while ((wait(&status)) > 0);
       sleep(5);
 ~~~
-Arti dari `child_id == 0` merupakan child process, di mana dilakukan proses membuat folder indomie. Dalam block else, `while ((wait(&status)) > 0);` untuk menunggu child process selesai, `sleep(5)` artinya menunggu selama 5 detik untuk melakukan proses selanjutnya.
+Arti dari `child_id == 0` merupakan child process, di mana dilakukan proses membuat folder indomie. Pembuatan folder menggunakan perintah execv yang akan menjalankan mkdir. Dalam block else, `while ((wait(&status)) > 0);` untuk menunggu child process selesai, `sleep(5)` artinya menunggu selama 5 detik untuk melakukan proses selanjutnya.
+~~~c
+child_id1 = fork();
+        if (child_id1 < 0){
+            exit(EXIT_FAILURE);
+        }
+        if (child_id1 == 0){
+            char *argv[] = {"mkdir", "-p", "/home/tari/modul2/sedaap", NULL};
+            execv("/bin/mkdir", argv);
+        }
+~~~
+Melakukan fork() lagi untuk membuat child process yang mengeksekusi hal yang sama dengan yang di atas, hanya saja "indomie" diganti dengan "sedaap".
+
+### b
+Kemudian program tersebut harus meng-ekstrak file jpg.zip di direktori “/home/[USER]/modul2/”. Setelah tugas sebelumnya selesai, ternyata tidak hanya itu tugasnya.
+
+### Penyelesaian
+~~~c
+else{
+     while ((wait(&status)) > 0);
+     child_id2 = fork();
+     if (child_id2 < 0){
+           exit(EXIT_FAILURE);
+     }
+     if (child_id2 == 0){
+          char *argv[] = {"unzip", "/home/tari/jpg.zip", "-d", "/home/tari/modul2/", NULL};
+          execv("/usr/bin/unzip", argv);
+     }
+~~~
+dalam else, melakukan fork() lagi untuk melakukan unzip. Unzip menggunakan perintah execv yang akan menjalankan unzip dari `"/home/tari/jpg.zip"`, `-d` adalah opsi untuk meletakkan hasil unzip di `"/home/tari/jpg.zip"`.
+
+### c
+Diberilah tugas baru yaitu setelah di ekstrak, hasil dari ekstrakan tersebut (di dalam direktori “home/[USER]/modul2/jpg/”) harus dipindahkan sesuai dengan pengelompokan, semua file harus dipindahkan ke “/home/[USER]/modul2/sedaap/” dan semua direktori harus dipindahkan ke “/home/[USER]/modul2/indomie/”.
+
+### Penyelesaian
+~~~c
+if (child_id3 < 0) {
+    exit(EXIT_FAILURE); // Jika gagal membuat proses baru, program akan berhenti
+}
+if (child_id3 == 0) {
+    // this is child
+    DIR *d;
+    struct dirent *dir;
+    d = opendir("/home/tari/modul2/jpg/");
+    if(d){
+	char namafile[300];
+	while ((dir = readdir(d)) != NULL)
+	{
+	    if(dir->d_type == DT_REG){
+		pid_t child_id4;
+		child_id4 = fork();
+
+		if (child_id4 < 0){
+		    exit(EXIT_FAILURE);
+		}
+		if (child_id4 == 0){
+		    snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
+		    char *argv[] = {"mv", namafile, "/home/tari/modul2/sedaap", NULL};
+		    execv("/bin/mv", argv);
+		}
+		else {
+		    while ((wait(&status)) > 0);			
+		}
+	    }
+	    else{
+		if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
+		else{
+		    child_id = fork();
+
+		    if (child_id < 0){
+			exit(EXIT_FAILURE);
+		    }
+		    if (child_id == 0){
+			snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
+			char *argv[] = {"mv", namafile, "/home/tari/modul2/indomie", NULL};
+			execv("/bin/mv", argv);
+		    }
+~~~
+Penjelasan:
+~~~c
+DIR *d;
+struct dirent *dir;
+d = opendir("/home/tari/modul2/jpg/");
+~~~
+Mendeklarasikan sebuah direktori d yang membuka direktori `/home/tari/modul2/jpg/`.
+~~~c
+char namafile[300];
+while ((dir = readdir(d)) != NULL)
+~~~
+Mendeklarasikan string namafile dengan size 300, lalu membuat loop unutk membaca isi direktori.
+~~~c
+if(dir->d_type == DT_REG)
+~~~
+kondisi ketika tipe dari isi direktori merupakan regular file.
+~~~c
+if (child_id4 == 0){
+    snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
+    char *argv[] = {"mv", namafile, "/home/tari/modul2/sedaap", NULL};
+    execv("/bin/mv", argv);
+}
+~~~
+melakukan fork(), dalam block child process melakukan `snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name)` untuk menginisialisasi string namafile dengan `"/home/tari/modul2/jpg/%s", dir->d_name"`. Pemindahan file-file dilakukan dengan perintah execv yang akan menjalankan mv.
+~~~c
+else{
+	if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) );
+...
+	if (child_id == 0){
+		snprintf(namafile, 300, "/home/tari/modul2/jpg/%s", dir->d_name);
+		char *argv[] = {"mv", namafile, "/home/tari/modul2/indomie", NULL};
+		execv("/bin/mv", argv);
+	}
+~~~
+ketika tipe dari isi direktori bukan regular file (dalam hal ini berarti sebuah direktori / folder), `if( !(strcmp(dir->d_name, ".")) || !(strcmp(dir->d_name, "..")) )` adalah untuk mengabaikan direktori . (direktori sendiri) dan .. (parent direktori). Setelah itu membuat fork() lagi kemudian dalam child process memindah semua direktori ke dalam direktori indomie.
+
+### d
+Untuk setiap direktori yang dipindahkan ke “/home/[USER]/modul2/indomie/” harus membuat dua file kosong. File yang pertama diberi nama “coba1.txt”, lalu 3 detik kemudian membuat file bernama “coba2.txt”. (contoh : “/home/[USER]/modul2/indomie/{nama_folder}/coba1.txt”).
+
+### Penyelesaian
+~~~c
+else {
+	while ((wait(&status)) > 0);
+	char folder[350];
+	for (i = 1; i < 3; i++)
+	{
+	    snprintf(folder, 350, "/home/tari/modul2/indomie/%s/coba%d.txt", dir->d_name, i);
+	    FILE *fp;
+	    fp = fopen(folder, "w");
+	    fclose(fp);
+	    sleep(3);
+	}
+    }
+~~~
+mendeklarasikan string folder dengan size 350, setelah itu melakukan looping dari 1 sampai 2. Dalam loop membuat file coba1.txt yang setelah 3 detik kemudian membuat file coba2.txt.
